@@ -1,0 +1,5 @@
+# Desktop, PC simulation and serial trials. Tkinter comes with Python/Tcl-Tk.
+# The upstream TUI/MATLAB entry points are not part of this release.
+bayesian-optimization==3.3.0
+requests>=2.31.0
+pyserial>=3.5

@@ -1,0 +1,53 @@
+{
+  "_注释": {
+    "用途": "速度PI结构示例，参数不是通用安全值；先核对固件、限流供电、停止方式，再运行。",
+    "串口": "将serial.port的YOUR_COM_PORT改为设备端口，例如COM4；不要同时打开串口助手。",
+    "运行": "默认固定复测且不调用AI；operation_mode=bayes启用搜索，run_mode=bayes_llm才启用AI。",
+    "轮数": "rounds_per_batch是搜索总轮数，initial_random_trials是首批随机参数组数；llm_interval_rounds是AI咨询间隔。",
+    "边界": "ranges和protocol_limits必须与固件一致；修改上位机JSON不会修改固件。",
+    "坐标": "速度跟踪使用非周期坐标cyclic_period=0；切换单位、目标或评分时使用新历史。"
+  },
+  "serial": {
+    "port": "YOUR_COM_PORT",
+    "baudrate": 115200,
+    "read_timeout_s": 0.05,
+    "ping_timeout_s": 1.0,
+    "listen_after_ping_s": 0.0
+  },
+  "operation_mode": "fixed_repeat",
+  "experiment_name": "速度环示例",
+  "feedback_unit": "rad/s",
+  "pid_mode": "pi",
+  "fixed_repeat": {"kp": 0.01, "ki": 0.1, "kd": 0.0, "repeats": 3},
+  "protocol_limits": {
+    "target_min": 0.0,
+    "target_max": 50.0,
+    "target_min_inclusive": false,
+    "target_max_inclusive": true,
+    "duration_max_ms": 3000
+  },
+  "target_values": [20.0],
+  "multi_target_worst_weight": 0.3,
+  "duration_ms": 3000,
+  "inter_trial_delay_s": 1.0,
+  "feedback_abs_limit": 50.0,
+  "response": {
+    "mode": "tracking",
+    "initial_reference": "fixed",
+    "initial_value": 0.0,
+    "normalization_floor": 0.001,
+    "settling_tolerance_abs": 0.0,
+    "settling_tolerance_ratio": 0.05,
+    "cyclic_period": 0.0
+  },
+  "trial_guard": {"enabled": true, "startup_grace_ms": 100, "reverse_hold_ms": 100, "stall_hold_ms": 500},
+  "baseline": {"kp": 0.01, "ki": 0.1, "kd": 0.0},
+  "ranges": {"kp": [0.001, 0.1], "ki": [0.01, 1.0], "kd": [0.0, 0.02]},
+  "initial_random_trials": 2,
+  "rounds_per_batch": 6,
+  "pid_id": "speed_pi_example",
+  "history_mode": "new",
+  "seed": 42,
+  "run_mode": "bayes_only",
+  "llm_interval_rounds": 5
+}

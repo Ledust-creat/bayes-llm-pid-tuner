@@ -1,0 +1,29 @@
+{
+  "_注释": {
+    "模式切换": "纯贝叶斯：run_mode 设为 bayes_only；贝叶斯+AI：设为 bayes_llm，并在 motor_bo_local.json 配好 API；--llm 可临时覆盖。",
+    "AI咨询间隔": "llm_interval_rounds 不是总轮数。初始设计完成后首次咨询，之后每隔该轮数咨询一次，末轮不咨询。",
+    "总轮数": "普通模式：1 个基线 + initial_random_2d + bayes_rounds_2d；使用 --tune-d 时：1 个基线 + initial_random_3d + bayes_rounds_3d。"
+  },
+  "run_mode": "bayes_only",
+  "llm_interval_rounds": 5,
+  "seed": 42,
+  "baseline": {"kp": 0.05, "ki": 0.10, "kd": 0.0},
+  "ranges": {"kp": [0.0, 0.5], "ki": [0.0, 1.0], "kd": [0.0, 0.02]},
+  "initial_random_2d": 4,
+  "bayes_rounds_2d": 15,
+  "initial_random_3d": 6,
+  "bayes_rounds_3d": 24,
+  "simulation": {
+    "duration_s": 2.0,
+    "step_rad_s": 10.0,
+    "integration_dt_s": 0.00025,
+    "speed_tick_hz": 930.0,
+    "inertia_kg_m2": 0.01,
+    "damping_nm_per_rad_s": 0.01,
+    "torque_constant_nm_per_a": 0.10,
+    "current_tau_s": 0.002,
+    "iq_limit_a": 1.55,
+    "speed_abort_rad_s": 15.0,
+    "derivative_filter_tau_s": 0.02
+  }
+}

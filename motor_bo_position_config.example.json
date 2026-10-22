@@ -1,0 +1,51 @@
+{
+  "_注释": {
+    "用途": "连续绝对位置的配置结构示例；默认P=0，不用于检验动态响应，须按实际对象填写可运行基线。",
+    "单位": "RUN_STEP与DATA使用度；目标范围不是周期，当前示例按目标减反馈直接计算。",
+    "坐标": "cyclic_period=0，负位置和零位合法，因此关闭正目标速度的负向/近零判定。",
+    "开始": "复制为motor_bo_hw_config.json后配置串口、参数和固件边界；不与速度历史混用。"
+  },
+  "serial": {
+    "port": "YOUR_COM_PORT",
+    "baudrate": 115200,
+    "read_timeout_s": 0.05,
+    "ping_timeout_s": 1.0,
+    "listen_after_ping_s": 0.0
+  },
+  "operation_mode": "fixed_repeat",
+  "experiment_name": "绝对位置示例",
+  "feedback_unit": "度",
+  "pid_mode": "p",
+  "fixed_repeat": {"kp": 0.0, "ki": 0.0, "kd": 0.0, "repeats": 3},
+  "protocol_limits": {
+    "target_min": -360.0,
+    "target_max": 360.0,
+    "target_min_inclusive": true,
+    "target_max_inclusive": false,
+    "duration_max_ms": 5000
+  },
+  "target_values": [30.0, -30.0],
+  "multi_target_worst_weight": 0.3,
+  "duration_ms": 2000,
+  "inter_trial_delay_s": 1.0,
+  "feedback_abs_limit": 360.0,
+  "response": {
+    "mode": "position",
+    "initial_reference": "first_sample",
+    "initial_value": 0.0,
+    "normalization_floor": 1.0,
+    "settling_tolerance_abs": 1.0,
+    "settling_tolerance_ratio": 0.05,
+    "cyclic_period": 0.0
+  },
+  "trial_guard": {"enabled": false, "startup_grace_ms": 100, "reverse_hold_ms": 100, "stall_hold_ms": 500},
+  "baseline": {"kp": 0.0, "ki": 0.0, "kd": 0.0},
+  "ranges": {"kp": [0.0, 25.0], "ki": [0.0, 1.0], "kd": [0.0, 0.02]},
+  "initial_random_trials": 2,
+  "rounds_per_batch": 6,
+  "pid_id": "position_p_example",
+  "history_mode": "new",
+  "seed": 42,
+  "run_mode": "bayes_only",
+  "llm_interval_rounds": 5
+}
