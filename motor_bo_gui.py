@@ -38,7 +38,7 @@ CHOICES = {
     "run_mode": {"纯贝叶斯": "bayes_only", "贝叶斯＋AI": "bayes_llm"},
     "history_mode": {"新建历史": "new", "继续同一PID": "continue"},
     "pid_mode": {"P调参（I=D=0）": "p", "PI调参（D固定）": "pi", "PD调参（I=0）": "pd", "PID调参": "pid"},
-    "response.mode": {"跟踪阶跃（速度等）": "tracking", "位置阶跃": "position"},
+    "response.mode": {"设定值跟踪": "tracking", "坐标阶跃（如位置角度）": "position"},
     "response.initial_reference": {"首帧反馈估计": "first_sample", "固定初始值": "fixed"},
     "protocol_limits.target_min_inclusive": {"包含下限": "true", "不包含下限": "false"},
     "protocol_limits.target_max_inclusive": {"包含上限": "true", "不包含上限": "false"},
@@ -281,10 +281,10 @@ class MotorTunerApp:
                     self.import_best_button = ttk.Button(frame, text="当前PID历史最优 → 复测", command=self.use_current_best)
                     self.import_best_button.grid(row=len(fields), column=0, columnspan=2, sticky="ew", pady=(6, 0))
             if name == "运行配置":
-                ttk.Label(page.body, text="每组PID依次测试全部目标。\n单位必须与固件一致，不自动换算。\nP模式I/D固定0；PD模式I固定0。\n保存或连接后生效，不自动切换固件环路。",
+                ttk.Label(page.body, text="每组PID依次测试全部目标。\n目标与反馈使用设备约定的同一单位。\nP模式I/D固定0；PD模式I固定0。\n保存只更新设置，确认开始才发送试验命令。\n对象名称用于标记记录，不切换设备控制方式。",
                           justify="left", padding=10).pack(fill="x")
             else:
-                ttk.Label(page.body, text="位置应关闭负向/近零判定；反馈截止仍有效。\n评分尺度=max(阶跃幅度,归一化下限)。\n容差=max(绝对容差,幅度×相对容差)。\n周期/幅度/容差使用反馈单位。\n首帧约10ms后，只能估计真实起点。\n随机种子用于候选复现，与转子无关。",
+                ttk.Label(page.body, text="负值或零值合法时，应关闭负向/近零判定。\n评分尺度=max(阶跃幅度,归一化下限)。\n容差=max(绝对容差,幅度×相对容差)。\n周期/幅度/容差使用反馈单位。\n首帧反馈只是起点估计，时间由设备采样决定。\n随机参数组用于探索，种子用于复现候选序列。",
                           justify="left", padding=10).pack(fill="x")
 
         api_page = ttk.Frame(settings, padding=12)
@@ -439,7 +439,7 @@ class MotorTunerApp:
                     _, axis, index = key.split(".")
                     value = data["ranges"].get(axis, [0, 0.02])[int(index)]
                 else:
-                    defaults = {"experiment_name": "速度环", "feedback_unit": "rad/s",
+                    defaults = {"experiment_name": "未命名对象", "feedback_unit": "rad/s",
                                 "pid_mode": "pid" if data.get("tune_d", False) else "pi", "multi_target_worst_weight": 0.3,
                                 "target_values": [data.get("target_rad_s", 20)],
                                 "baseline.kd": 0.0, "fixed_repeat.kd": 0.0}
@@ -671,7 +671,7 @@ class MotorTunerApp:
                     continue
                 self.awaiting_start = True
                 self.confirm_button.configure(state="normal")
-                self.status.set("握手成功：点击“确认开始”后才执行电机试验")
+                self.status.set("握手成功：点击“确认开始”后才执行调参或复测试验")
                 continue
             if line.strip() == "GUI_RUNNING":
                 continue
@@ -906,7 +906,7 @@ class MotorTunerApp:
         source_unit = config.get("feedback_unit", "rad/s")
         current_response = CHOICES["response.mode"].get(self.fields["response.mode"][0].get())
         if source_unit != self.fields["feedback_unit"][0].get() or source_rules["response.mode"] != current_response:
-            raise ValueError("所选记录的单位/响应类型与当前配置不同；请先切换匹配的试验规则，不能把速度最优导入位置试验")
+            raise ValueError("所选记录的单位/响应类型与当前配置不同；请先选择匹配的试验规则，不能混用不同被控量的最优参数")
         was_pd = CHOICES["pid_mode"].get(self.fields["pid_mode"][0].get()) in {"p", "pd"}
         self.fields["pid_mode"][0].set(next(label for label, code in CHOICES["pid_mode"].items() if code == mode))
         self.sync_pid_mode()

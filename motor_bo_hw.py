@@ -143,11 +143,11 @@ def main() -> int:
                     if args.resume
                     else "PID 搜索/发送边界以 motor_bo_hw_config.json 的 ranges 为准；"
                 )
-                + "请确认下位机的 SET_PID 接受相同范围，否则固件可能静默忽略。"
+                + "请确认设备的 SET_PID 接受相同范围，否则命令可能被静默忽略。"
             )
         print(
             f"主机遥测绝对反馈停止阈值 {tune['max_feedback_rad_s']} {unit}。"
-            "它依赖串口遥测，不替代电源限流或下位机保护。"
+            "它依赖串口遥测，不替代设备本地保护与紧急停止措施。"
         )
         guard = tune.get("trial_guard")
         if guard and guard.get("enabled", True):
@@ -157,7 +157,7 @@ def main() -> int:
                 f"{guard['stall_hold_ms']} ms 后停止本批。"
             )
         else:
-            print("负向/近零判定已关闭：负位置及零位不视为故障；绝对反馈截止、遥测完整性和STOP确认仍有效。")
+            print("负向/近零判定已关闭：负值及零值本身不视为故障；绝对反馈截止、遥测完整性和STOP确认仍有效。")
         limits = tune["protocol_limits"]
         left = "[" if limits.get("target_min_inclusive", False) else "("
         right = "]" if limits.get("target_max_inclusive", True) else ")"
@@ -165,7 +165,7 @@ def main() -> int:
             "RUN_STEP 配置范围："
             f"{left}{limits.get('target_min', 0):g}, {limits['target_max_rad_s']:g}{right} {unit}，"
             f"{tune['protocol_limits']['duration_max_ms']} ms；"
-            "必须与当前下位机固件一致。"
+            "必须与设备实际接受的目标范围和时长一致。"
         )
         response = tune.get("response", {})
         print(f"评分类型：{response.get('mode', 'tracking')}；起点依据：{response.get('initial_reference', 'fixed')}；"
@@ -189,7 +189,7 @@ def main() -> int:
             print(f"串口握手成功：{','.join(reply.fields)}")
             prompt = "确认被控对象及实验条件已就绪后，输入 START 开始实机试验："
             if args.resume:
-                prompt = "恢复前确认电机安全；输入 START 从下一轮继续："
+                prompt = "恢复前确认被控对象及实验条件已就绪；输入 START 从下一轮继续："
             if args.gui_control:
                 print(prompt, flush=True)
                 print("GUI_READY", flush=True)
