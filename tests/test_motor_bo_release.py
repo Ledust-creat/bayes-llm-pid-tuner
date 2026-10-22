@@ -2,8 +2,10 @@
 
 import json
 from pathlib import Path
+import tempfile
 import unittest
 
+from motor_bo_core.gui_support import initialize_local_config, read_json
 from motor_bo_core.hardware_runner import load_tune_config, score_response
 from motor_bo_core.serial_link import parse_serial_config
 
@@ -12,6 +14,30 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class ReleaseExampleTests(unittest.TestCase):
+    def test_first_run_creates_local_settings_from_public_template(self):
+        template = ROOT / "motor_bo_hw_config.example.json"
+        with tempfile.TemporaryDirectory() as tmp:
+            local = Path(tmp) / "hardware.json"
+            self.assertTrue(initialize_local_config(local, template))
+            self.assertEqual(read_json(local), read_json(template))
+
+    def test_existing_settings_are_never_replaced(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            local = Path(tmp) / "hardware.json"
+            original = b'{"serial":{"port":"COM_KEEP"},"custom":true}\n'
+            local.write_bytes(original)
+            self.assertFalse(initialize_local_config(local, Path(tmp) / "missing-template.json"))
+            self.assertEqual(local.read_bytes(), original)
+
+    def test_invalid_template_does_not_create_local_settings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            local = Path(tmp) / "hardware.json"
+            template = Path(tmp) / "template.json"
+            template.write_text("[]", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                initialize_local_config(local, template)
+            self.assertFalse(local.exists())
+
     def test_hardware_examples_validate_without_opening_serial(self):
         for filename in ("motor_bo_hw_config.example.json", "motor_bo_position_config.example.json"):
             with self.subTest(filename=filename):

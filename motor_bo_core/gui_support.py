@@ -17,6 +17,22 @@ def read_json(path: Path) -> dict:
     return data
 
 
+def initialize_local_config(path: Path, template: Path) -> bool:
+    """Create a missing local config; never replace user settings or open devices."""
+    if path.exists():
+        return False
+    data = read_json(template)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        # Exclusive creation also protects settings created by another GUI.
+        with path.open("x", encoding="utf-8") as handle:
+            json.dump(data, handle, indent=2, ensure_ascii=False)
+            handle.write("\n")
+    except FileExistsError:
+        return False
+    return True
+
+
 def get_value(data: dict, key: str, default=""):
     value = data
     for part in key.split("."):

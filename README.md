@@ -1,101 +1,86 @@
 # PID 自动整定台 · Bayesian + LLM PID Tuner
 
-基于贝叶斯优化的 PID 调参上位机，支持 PC 仿真、串口实机试验和固定参数复测。可选大模型按间隔分析曲线与指标；PID 候选由贝叶斯优化器生成，AI 不直接下发增益。
+通过本地图形界面完成 PID 参数搜索、AI 辅助分析和固定参数复测。连接支持约定串口协议的下位机后，在界面中配置串口、目标、参数范围和运行方式，即可查看曲线、评分与中文建议。
 
-项目仓库：[Ledust-creat/bayes-llm-pid-tuner](https://github.com/Ledust-creat/bayes-llm-pid-tuner)。
+项目仓库：[Ledust-creat/bayes-llm-pid-tuner](https://github.com/Ledust-creat/bayes-llm-pid-tuner)。本项目基于 [LLM-PID-Tuner dev](https://github.com/KINGSTON-115/llm-pid-tuner/tree/dev)扩展，保留上游 MIT 许可；来源见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
-本项目基于 [KINGSTON-115/llm-pid-tuner 的 dev 分支](https://github.com/KINGSTON-115/llm-pid-tuner/tree/dev)扩展，保留必要的上游大模型模块和 MIT 许可。新增功能围绕 STM32 FOC 调试形成，但串口层使用通用的目标与反馈字段。来源与依赖见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+## 1. 安装并打开 GUI
 
-## 功能
-
-| 功能 | 行为 | 使用场景 |
-|---|---|---|
-| 纯贝叶斯 / 贝叶斯 + AI | 搜索候选；可按间隔咨询中文建议 | 自动试验与结果分析 |
-| P / PI / PD / PID | 按所选维度搜索；P固定I/D=0，PD固定I=0 | 下位机必须实际支持对应参数 |
-| 固定参数复测 | 同一参数重复运行，不搜索、不调用AI | 检查候选的重复性 |
-| 多目标与历史 | 一组参数依次测试1～10个目标；支持跨批次续调 | 比较多个工作点，减少从头试起 |
-| 本地图形界面 | 配置、曲线筛选、评分表、日志与中文建议 | Windows / Tkinter，无网页服务 |
-| CSV / SVG记录 | 保留原始遥测、各目标指标和汇总曲线 | 复核试验与导入最佳参数复测 |
-
-![历史速度环五轮多目标固定复测：20、50、80 rad/s](images/speed-validation.svg)
-
-上图是已保存的电机速度环记录。串口目标的单位、实际控制环和允许范围由固件决定；在界面中改名称不会切换固件，也不会自动换算单位。
-
-## 首次安装与启动
-
-建议在 Windows 上使用包含 Tcl/Tk 的 Python。本项目在 Python 3.13.6 环境验证；源码使用 Python 3.10+ 语法。当前提供源码，不把上游 Release 中的 EXE 当成本定制版。
-
-在本目录打开 PowerShell：
+建议使用 Windows 与包含 Tcl/Tk 的 Python，已在 Python 3.13.6 环境验证。首次下载后，在项目目录打开 PowerShell：
 
 ```powershell
 python -m venv venv
 .\venv\Scripts\python.exe -m pip install -r requirements-motor-bo.txt
-.\venv\Scripts\python.exe motor_bo.py
-```
-
-最后一行只运行 PC 仿真，不打开串口、不请求真实模型。结果保存在 `artifacts/motor_bo/`，先检查这一流程再连接硬件。
-
-首次准备实机配置时，从示例复制一份（已有配置不要覆盖）：
-
-```powershell
-Copy-Item motor_bo_hw_config.example.json motor_bo_hw_config.json
 .\venv\Scripts\python.exe motor_bo_gui.py
 ```
 
-之后可以双击 `start_motor_gui.bat`。它使用项目内 `venv` 启动同一界面，旧的 `motor_bo_*` 文件名保留兼容，不要求本地目录名称与 GitHub 仓库名称一致。界面启动不会打开串口；配置好后点击“连接并准备”进行 PING，再点击“确认开始”才执行试验。
+以后直接双击 `start_motor_gui.bat` 即可。首次打开会自动准备本机默认配置，已有配置原样保留；**不用先跑仿真，也不用逐个打开或复制 JSON 文件。** 日常实机参数和 API 均在界面填写，保存后由软件管理。
 
-### 要改哪些配置
+GUI 启动只加载设置，不打开串口、不启动下位机。当前发布源码，首次使用仍需安装 Python 和依赖。
 
-| 文件 | 用途 | 是否上传 |
+## 2. 在界面中配置
+
+### 串口与试验参数
+
+| 界面位置 | 填什么 | 操作说明 |
 |---|---|---|
-| `motor_bo_config.json` | PC 仿真模型、搜索轮数与模式 | 是 |
-| `motor_bo_hw_config.example.json` | 通用串口速度跟踪结构示例 | 是 |
-| `motor_bo_position_config.example.json` | 连续绝对位置结构示例，P默认0，需填写可运行基线 | 是 |
-| `motor_bo_hw_config.json` | 复制示例后使用的本机实机配置 | 否 |
-| `motor_bo_local.example.json` | 无密钥的 API 示例 | 是 |
-| `motor_bo_local.json` | 本机 API 地址、模型和密钥 | 否 |
+| 运行配置 → 串口 | 设备 COM 口、波特率 | 插入设备后点击“刷新”，选择正确端口；配套示例波特率115200 |
+| 运行配置 → 实验 | 被控对象、反馈单位、目标列表、时长、轮间等待 | 多目标用逗号分隔，例如`20,50,80`；单位必须与固件一致 |
+| 运行配置 → 贝叶斯与AI | 运行模式、搜索模式、轮数、AI间隔、PID类型、历史方式 | 可选P、PI、PD、PID；实际支持哪些参数由固件决定 |
+| 运行配置 → 参数区域 | 固定复测增益、首批基线、搜索硬边界 | 在已知可运行的基线附近设范围，不直接套用别人的参数 |
+| 边界与时序 | 协议目标范围、反馈截止、评分坐标、异常判定和超时 | 按实际下位机能力设置；界面不会修改固件限制 |
 
-实机先填写 `serial.port`，把 `YOUR_COM_PORT` 改为实际端口；核对 `ranges`、`protocol_limits`、目标、时长和反馈截止值，关闭占用串口的其他工具。示例参数不作为任意电机的安全默认值；首次试验需限流供电、可操作的断电手段和固件本地保护。
+![串口配置：刷新并选择设备端口、设置波特率](images/gui-serial.png)
 
-位置环先根据真实固件准备本机配置。当前配套 FOC 固件使用连续绝对位置、度数传输，位置误差直接相减，因此 `cyclic_period=0`；目标允许范围约为±360°不表示720°周期。周期最短差对象才设置非零周期。改变单位、评分或试验条件后建立新历史。
+![运行配置：目标列表、历史方式及P、PI、PD、PID搜索选项](images/gui-settings.png)
 
-### 三种运行方式
+上图是位置环配置示例；端口、目标、单位和增益按自己的下位机填写，不必照抄截图数值。
 
-| 目标 | 设置 | 行为 |
+修改串口、试验或边界后，点击顶部 **“保存配置”**。保存只更新本机设置，不向设备发送参数；点击“连接并准备”时也会先保存。所有设置留在本机，不随源码提交。
+
+### 选择搜索或固定复测
+
+| 想做什么 | 在GUI里选择 | 程序行为 |
 |---|---|---|
-| 纯贝叶斯搜索 | `operation_mode=bayes`，`run_mode=bayes_only` | 不调用AI |
-| 贝叶斯 + AI | `operation_mode=bayes`，`run_mode=bayes_llm` | 初始试验后按`llm_interval_rounds`咨询；正常批末另有范围建议 |
-| 固定复测 | `operation_mode=fixed_repeat` | 使用`fixed_repeat`参数，不调用AI或优化器 |
+| 纯贝叶斯调参 | 运行方式“贝叶斯调参”，搜索模式“纯贝叶斯” | 自动生成候选，不调用AI |
+| 贝叶斯 + AI | 运行方式“贝叶斯调参”，搜索模式“贝叶斯＋AI” | 贝叶斯选参数，AI按间隔分析并给出探索或暂停建议 |
+| 固定参数复测 | 运行方式“固定参数复测”，填写固定PID与重复次数 | 不改增益、不调用AI，重复试验并统计评分 |
 
-`rounds_per_batch`是搜索总轮数，`initial_random_trials`是首批随机参数组数，AI间隔不是总轮数。`history_mode=new`建立新系列，`continue`承接同条件历史；`--resume`只补完AI暂停的当前批次。三个目标、二十轮最多执行六十次目标试验，每次结束均请求STOP。
+“每批总轮数”是搜索参数组数，“AI咨询间隔”控制多久分析一次。每组参数会依次测试全部目标；例如3个目标、5次固定复测，共执行15次目标试验。历史方式“新建历史”用于新的对象或条件，“继续同一PID”才承接已有结果。
 
-需要 AI 时，首次复制 `motor_bo_local.example.json` 为 `motor_bo_local.json`，填写自己的地址、模型和密钥；纯贝叶斯与固定复测不需要它。`MOTOR_BO_*` 环境变量优先于该文件。不要提交真实配置或把密钥贴到日志、截图和 issue。
+### 可选：在 API 页配置 AI
 
-## 串口与评分
+只使用纯贝叶斯或固定复测，可以跳过 API 页。使用混合模式时，在 **“API”** 标签页填写协议提供方、API地址、模型名称和密钥，再点击 **“保存API配置”**；不用手动创建密钥文件。
 
-当前协议为115200、8N1、ASCII、逗号分隔、CRLF结尾，无CRC、序号和NACK。命令为`PING`、`SET_PID`、`RUN_STEP`、`STOP`，成功回复`OK`，遥测为`DATA,elapsed_ms,target,feedback`。拒绝命令可能静默无应答，上位机等待超时，不自动重发。完整约定见 [串口协议](docs/PROTOCOL.md)。
+![API配置：填写服务地址、模型名称与密钥，密钥保持隐藏](images/gui-api.png)
 
-实机单目标评分：70%归一化绝对误差积分、20%超调、10%调节时间占比；默认多目标综合分为70%平均分加30%最差目标分，越低越好。仿真另含电流限幅占用，分数不与实机直接比较。复测应维持同样的起点、负载和试验定义。
+截图中的地址和模型仅展示填写位置，使用时替换为自己的服务信息，密钥保持隐藏。
 
-## 测试、目录与文档
+保存 API 不会立即请求模型。若曾配置`MOTOR_BO_*`环境变量，它们仍优先于界面保存值；使用GUI管理API时应避免另设一套冲突的环境变量。
 
-配置文件准备好后，可运行离线测试；测试使用假串口和模拟建议，不连接真实设备：
+## 3. 连接、开始与查看结果
 
-```powershell
-.\venv\Scripts\python.exe -X utf8 -m unittest discover -s tests -p 'test_motor_bo*.py'
-```
+| 顺序 | 点击或检查 | 结果 |
+|---|---|---|
+| ① 准备设备 | 关闭占用串口的其他软件，确认固件协议、限流与断电方式 | 目标、增益范围及单位与下位机一致 |
+| ② 连接并准备 | 点击顶部“连接并准备” | 只进行握手；成功后“确认开始”可用 |
+| ③ 确认开始 | 人工检查参数后点击“确认开始” | 才开始设置PID与执行试验 |
+| ④ 看结果或停止 | 查看“曲线与评分”“实时日志”“AI中文评价”；需要时点击“停止” | 保存曲线与记录；停止会请求下位机STOP并检查应答 |
 
-| 入口或目录 | 内容 |
-|---|---|
-| `motor_bo_gui.py` / `start_motor_gui.bat` | 桌面界面 |
-| `motor_bo_hw.py` / `motor_bo_link.py` | 实机试验 / 仅PING的链路检查 |
-| `motor_bo.py` / `motor_bo_core/` | 仿真入口 / 优化、试验、评分与通信模块 |
-| `llm/` / `core/` / `pid_safety.py` | 保留的上游客户端及其导入依赖 |
-| `tests/` / `docs/` | 当前工具的离线测试与使用说明 |
+曲线下方表格可以勾选显示项，也可“全部显示”“全部隐藏”或“仅显示最优组”。选定运行记录后，可以将“所选记录最优 → 复测”，或者在左侧使用“当前PID历史最优 → 复测”；导入只填写界面，不会直接运行。
 
-- [桌面界面操作](docs/motor_bo_gui.md)
-- [仿真、实机与历史说明](docs/zh-CN/MOTOR_BO.md)
-- [独立仓库发布检查](docs/PUBLISHING.md)
+实机分数越低越好，综合考虑跟踪误差、超调和调节时间。多目标还考虑最差目标，复测会给出均值和波动；换目标、单位、负载或评分条件后，应建立新历史。CSV、曲线与AI建议由软件自动保存，可用“打开记录目录”和“打开SVG曲线”查看。
+
+## 4. 效果、适配与文档
+
+![历史速度环五轮多目标固定复测：20、50、80 rad/s](images/speed-validation.svg)
+
+上图为已保存的电机速度环多目标复测。软件通过通用`target/feedback`收发数据，实际控制环由下位机决定；在GUI改名称不会自动切换固件，也不会自动换算单位。当前配套绝对位置固件用度数与直接相减误差，GUI中应选择位置阶跃、将反馈周期设0并关闭正向跟踪专用的负向/近零判定。
+
+运行实机前必须核对本机参数与固件能力，示例增益不是任意设备的通用安全值；主机停止与异常检查依赖串口，不能替代固件保护、限流电源和断电手段。
+
+- [GUI详细操作与位置配置](docs/motor_bo_gui.md)
+- [下位机串口协议](docs/PROTOCOL.md)
+- [开发者说明：命令行与离线测试](docs/zh-CN/MOTOR_BO.md)（不属于日常GUI上手步骤）
+- [开源来源](THIRD_PARTY_NOTICES.md) · [MIT License](LICENSE)
 - 配套 MCU 工程：[stm32f103-foc-mt6701](https://github.com/Ledust-creat/stm32f103-foc-mt6701)
-
-本次选定发布的是定制上位机，不包含上游旧启动器、Arduino示例、MATLAB/PLC入口和字体资源。`.gitignore`只放行所需文件；这些旧文件如仍在开发者本机，不等于属于本版发布功能。保留上游版权和 [MIT License](LICENSE)，二次开发及调试过程使用了 AI 辅助。

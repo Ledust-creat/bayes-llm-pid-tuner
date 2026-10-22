@@ -15,7 +15,8 @@ from tkinter import filedialog, messagebox, ttk
 import webbrowser
 
 from motor_bo_core.gui_support import (
-    current_pid_best, expand_curves, get_value, list_runs, read_json, read_run, read_trace, save_json, with_settings,
+    current_pid_best, expand_curves, get_value, initialize_local_config, list_runs,
+    read_json, read_run, read_trace, save_json, with_settings,
 )
 from motor_bo_core.hardware_runner import _response_config
 
@@ -427,6 +428,7 @@ class MotorTunerApp:
         if self.busy:
             return
         try:
+            initialized = initialize_local_config(HW_CONFIG, ROOT / "motor_bo_hw_config.example.json")
             self.hardware_source = HW_CONFIG.read_text(encoding="utf-8")
             data = read_json(HW_CONFIG)
             self.ki_before_pd = {}
@@ -453,7 +455,8 @@ class MotorTunerApp:
             api = read_json(API_CONFIG) if API_CONFIG.exists() else {"provider": "openai"}
             for key, var in self.api_fields.items():
                 var.set(str(api.get(key, "")))
-            self.status.set("已加载配置；界面启动时不会连接串口")
+            self.status.set("首次启动已生成默认配置；请在左侧选择串口并核对试验参数" if initialized
+                            else "已加载配置；界面启动时不会连接串口")
             self.sync_pid_mode()
             self.scan_ports()
         except (OSError, ValueError, KeyError, TypeError) as exc:

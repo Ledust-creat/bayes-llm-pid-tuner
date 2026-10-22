@@ -43,7 +43,6 @@
 /docs/*
 !/docs/motor_bo_gui.md
 !/docs/PROTOCOL.md
-!/docs/PUBLISHING.md
 !/docs/zh-CN/
 /docs/zh-CN/*
 !/docs/zh-CN/MOTOR_BO.md
@@ -51,8 +50,12 @@
 !/images/
 /images/*
 !/images/speed-validation.svg
+!/images/gui-serial.png
+!/images/gui-settings.png
+!/images/gui-api.png
 
 # Never publish local credentials, hardware settings, data or environments.
+/docs/PUBLISHING.md
 config.json
 motor_bo_local.json
 motor_bo_hw_config.json

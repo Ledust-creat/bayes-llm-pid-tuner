@@ -11,7 +11,6 @@ import unittest
 from unittest.mock import patch
 
 from motor_bo_core.hardware_runner import (
-    DEFAULT_TUNE_CONFIG,
     _downsample_speed_points,
     inspect_hardware_batch,
     load_tune_config,
@@ -149,7 +148,8 @@ class HardwareRunnerTests(unittest.TestCase):
             config["fixed_repeat"],
             {"kp": 0.2517, "ki": 3.55416, "repeats": 3},
         )
-        self.assertIn("pid_id", load_tune_config(DEFAULT_TUNE_CONFIG))
+        example = Path(__file__).resolve().parents[1] / "motor_bo_hw_config.example.json"
+        self.assertIn("pid_id", load_tune_config(example))
 
     def test_fixed_repeat_config_is_selected_and_checks_firmware_bounds(self):
         with tempfile.TemporaryDirectory() as temp_dir:

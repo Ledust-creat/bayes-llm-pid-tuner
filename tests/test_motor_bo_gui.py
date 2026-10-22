@@ -12,8 +12,11 @@ from unittest.mock import patch
 
 import motor_bo_hw
 from motor_bo_core.gui_support import current_pid_best, read_json, read_run, read_trace, save_json, with_settings
-from motor_bo_core.hardware_runner import DEFAULT_TUNE_CONFIG, run_hardware_trial
+from motor_bo_core.hardware_runner import run_hardware_trial
 from motor_bo_core.serial_protocol import ProtocolMessage
+
+
+EXAMPLE_CONFIG = Path(__file__).resolve().parents[1] / "motor_bo_hw_config.example.json"
 
 
 class FakeLink:
@@ -53,6 +56,51 @@ class FakeLink:
 
 
 class DesktopIntegrationTests(unittest.TestCase):
+    def test_first_run_configures_hardware_and_api_in_gui_without_connection(self):
+        import tkinter as tk
+        import motor_bo_gui as gui
+        try:
+            root = tk.Tk()
+        except tk.TclError:
+            self.skipTest("Tk display unavailable")
+        root.withdraw()
+        try:
+            with tempfile.TemporaryDirectory() as tmp, \
+                    patch.object(gui, "HW_CONFIG", Path(tmp) / "hardware.json"), \
+                    patch.object(gui, "API_CONFIG", Path(tmp) / "api.json"), \
+                    patch.object(gui, "UI_CONFIG", Path(tmp) / "theme.json"), \
+                    patch.object(gui, "list_runs", return_value=[]), \
+                    patch.object(gui.messagebox, "showerror") as showerror, \
+                    patch.object(gui.subprocess, "Popen") as launch, \
+                    patch("serial.Serial") as serial_open, \
+                    patch("requests.sessions.Session.request") as http_request:
+                app = gui.MotorTunerApp(root)
+                self.assertTrue(gui.HW_CONFIG.exists())
+                self.assertFalse(gui.API_CONFIG.exists())
+                self.assertIn("首次启动", app.status.get())
+                app.fields["serial.port"][0].set("COM_FAKE_GUI")
+                self.assertTrue(app.save_hardware(quiet=True))
+                original = gui.HW_CONFIG.read_bytes()
+                app.load_settings()
+                self.assertEqual(gui.HW_CONFIG.read_bytes(), original)
+                self.assertEqual(app.fields["serial.port"][0].get(), "COM_FAKE_GUI")
+                api = {"provider": "openai", "base_url": "https://example.invalid/v1",
+                       "model": "gui-test-model", "api_key": "test-only-placeholder"}
+                for key, value in api.items():
+                    app.api_fields[key].set(value)
+                app.save_api()
+                self.assertEqual(read_json(gui.API_CONFIG), api)
+                self.assertFalse(app.busy)
+                showerror.assert_not_called()
+                launch.assert_not_called()
+                serial_open.assert_not_called()
+                http_request.assert_not_called()
+        finally:
+            # Cancel events; each widget still owns deletion of its Tcl commands.
+            for timer in root.tk.splitlist(root.tk.call("after", "info")):
+                root.tk.call("after", "cancel", timer)
+            root.destroy()
+
     def test_gui_pid_fields_and_selective_multi_target_curves(self):
         import tkinter as tk
         import motor_bo_gui as gui
@@ -75,7 +123,7 @@ class DesktopIntegrationTests(unittest.TestCase):
                     patch.object(gui, "API_CONFIG", Path(tmp) / "unused.json"), \
                     patch.object(gui, "UI_CONFIG", Path(tmp) / "theme.json"):
                 # Isolate test data from concurrent edits in the user's GUI.
-                data = read_json(DEFAULT_TUNE_CONFIG)
+                data = read_json(EXAMPLE_CONFIG)
                 data.update(experiment_name="速度环", feedback_unit="rad/s", pid_mode="pi",
                             target_values=[20], duration_ms=3000,
                             response={"mode": "tracking"}, feedback_abs_limit=120,
@@ -166,7 +214,7 @@ class DesktopIntegrationTests(unittest.TestCase):
             root.destroy()
 
     def test_invalid_save_preserves_original_and_valid_save_keeps_comments(self):
-        data = read_json(DEFAULT_TUNE_CONFIG)
+        data = read_json(EXAMPLE_CONFIG)
         data["extra_future_option"] = {"keep": True}
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "config.json"
@@ -246,7 +294,7 @@ class DesktopIntegrationTests(unittest.TestCase):
     def test_gui_cli_cancel_saves_run_and_issues_no_run_step(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            data = read_json(DEFAULT_TUNE_CONFIG)
+            data = read_json(EXAMPLE_CONFIG)
             data["operation_mode"] = "fixed_repeat"
             path = root / "config.json"
             save_json(path, data)
